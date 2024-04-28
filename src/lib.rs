@@ -1,4 +1,4 @@
-use std::{any::TypeId, intrinsics::transmute_unchecked, marker::PhantomData};
+use std::{any::TypeId, marker::PhantomData};
 
 /// A `ZonbiId` represents a globally unique identifier for the `'static` version of a type.
 ///
@@ -16,61 +16,55 @@ impl ZonbiId {
     }
 }
 
-pub unsafe trait Zonbi {
-    type Casted<'z>: Sized + Zonbi + 'z
-    where
-        Self: Sized;
+pub unsafe trait Zonbi: AnyZonbi {
+    type Casted<'z>: Sized + Zonbi + 'z;
 
+    unsafe fn zonbify<'z>(self) -> Self::Casted<'z>;
+    unsafe fn zonbify_ref<'z>(&self) -> &Self::Casted<'z>;
+}
+
+pub trait AnyZonbi {
     fn zonbi_id(&self) -> ZonbiId;
 }
 
-impl dyn Zonbi {
+impl dyn AnyZonbi {
     /// Returns `true` if the inner type represents the same as `T`,
     /// **excluding** its lifetimes.
-    pub fn represents<T: Zonbi>(&self) -> bool {
-        ZonbiId::of::<T>().eq(&self.zonbi_id())
+    pub fn represents<Z: Zonbi>(&self) -> bool {
+        ZonbiId::of::<Z>().eq(&self.zonbi_id())
     }
 
-    pub unsafe fn downcast_ref<T: Zonbi>(&self) -> Option<&T> {
-        if self.represents::<T>() {
-            unsafe { Some(self.downcast_ref_unchecked()) }
+    pub unsafe fn downcast_ref<'a, 'z, Z: Zonbi + 'a>(&'a self) -> Option<&Z::Casted<'z>> {
+        if self.represents::<Z>() {
+            let raw = unsafe { self.downcast_ref_unchecked::<Z>() };
+            Some(raw)
         } else {
             None
         }
     }
 
-    pub unsafe fn downcast_ref_unchecked<T: Zonbi>(&self) -> &T {
+    pub unsafe fn downcast_ref_unchecked<'a, 'z, Z: Zonbi + 'a>(&'a self) -> &Z::Casted<'z> {
         // SAFETY: caller guarantees that T is the correct type
-        unsafe { &*(self as *const dyn Zonbi as *const T) }
+        let raw = unsafe { &*(self as *const dyn AnyZonbi as *const Z) };
+        Z::zonbify_ref(raw)
     }
 }
 
 #[repr(transparent)]
-pub struct Cage<'life, Z: 'static + Zonbi + ?Sized> {
-    life: PhantomData<&'life ()>,
-    zonbi: Z,
+pub struct Cage<'life> {
+    phantom: PhantomData<&'life ()>,
+    c: Box<dyn AnyZonbi>,
 }
 
-impl<'life, Z: Zonbi> Cage<'life, Z> {
-    pub fn new<V: Sized + Zonbi + 'life>(val: V) -> Self
-    where
-        Z: Zonbi<Casted<'life> = V>,
-        V: Zonbi<Casted<'static> = Z>,
-    {
-        let as_static = unsafe { transmute_unchecked::<V, V::Casted<'static>>(val) };
+impl<'life> Cage<'life> {
+    pub fn new<Z: Zonbi>(zonbi: Z) -> Self {
         Self {
-            life: PhantomData,
-            zonbi: as_static,
+            phantom: PhantomData,
+            c: Box::new(unsafe { zonbi.zonbify() }),
         }
     }
-}
 
-impl<'life> Cage<'life, dyn Zonbi> {
-    pub fn represents<T: Zonbi>(&self) -> bool {
-        self.zonbi.represents::<T>()
-    }
-
-    pub fn downcast_ref<T: Zonbi>(&self) -> Option<&T::Casted<'life>> {
-        unsafe { self.zonbi.downcast_ref::<T::Casted<'life>>() }
+    pub fn downcast_ref<'a, Z: Zonbi + 'a>(&'a self) -> Option<&Z::Casted<'life>> {
+        unsafe { self.c.downcast_ref::<'a, 'life, Z>() }
     }
 }

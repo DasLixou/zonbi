@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use zonbi::{Cage, Zonbi, ZonbiId};
+use zonbi::{AnyZonbi, Cage, Zonbi, ZonbiId};
 
 #[derive(Debug)]
 struct NonCopyI32(i32);
@@ -12,6 +12,16 @@ struct MyStruct<'a> {
 unsafe impl<'a> Zonbi for MyStruct<'a> {
     type Casted<'z> = MyStruct<'z>;
 
+    unsafe fn zonbify<'z>(self) -> Self::Casted<'z> {
+        core::mem::transmute(self)
+    }
+
+    unsafe fn zonbify_ref<'z>(&self) -> &Self::Casted<'z> {
+        core::mem::transmute(self)
+    }
+}
+
+impl<'a> AnyZonbi for MyStruct<'a> {
     fn zonbi_id(&self) -> ZonbiId {
         ZonbiId::of::<Self>()
     }
@@ -26,12 +36,12 @@ fn main() {
 fn with_zonbi<'a>(a: &'a NonCopyI32) {
     let my_struct = MyStruct { val: a };
 
-    let mut type_map: HashMap<ZonbiId, Box<Cage<'a, dyn Zonbi>>> = HashMap::new();
-    let zonbi_id = ZonbiId::of::<MyStruct>();
-    type_map.insert(zonbi_id, Box::new(Cage::new(my_struct)));
+    let mut type_map: HashMap<ZonbiId, Cage<'a>> = HashMap::new();
+    let id = ZonbiId::of::<MyStruct>();
+    type_map.insert(id, Cage::new(my_struct));
 
-    type_map[&zonbi_id].represents::<MyStruct<'a>>();
-    //let my_ref = unsafe { type_map[&zonbi_id].downcast_ref::<MyStruct<'a>>().unwrap() };
+    let r: &MyStruct<'a> = type_map[&id].downcast_ref::<'_, MyStruct<'a>>().unwrap();
+    println!("{:?}", r.val);
 }
 
 // Try commenting the code out
@@ -41,5 +51,6 @@ fn with_zonbi<'a>(a: &'a NonCopyI32) {
 //     let my_struct = MyStruct { val: a };
 
 //     let mut type_map: HashMap<TypeId, Box<dyn Any>> = HashMap::new();
-//     type_map.insert(TypeId::of::<MyStruct>(), Box::new(my_struct));
+//     let id = TypeId::of::<MyStruct>();
+//     type_map.insert(id, Box::new(my_struct));
 // }
