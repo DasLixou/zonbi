@@ -1,5 +1,7 @@
 use std::{any::TypeId, marker::PhantomData};
 
+pub use zonbi_macros::Zonbi;
+
 /// A `ZonbiId` represents a globally unique identifier for the `'static` version of a type.
 ///
 /// Because `ZonbiId` relies on rust's [`TypeId`], please keep their warning in mind
@@ -26,6 +28,12 @@ pub unsafe trait Zonbi: AnyZonbi {
 
 pub trait AnyZonbi {
     fn zonbi_id(&self) -> ZonbiId;
+}
+
+impl<Z: Zonbi> AnyZonbi for Z {
+    fn zonbi_id(&self) -> ZonbiId {
+        ZonbiId::of::<Self>()
+    }
 }
 
 impl dyn AnyZonbi {
