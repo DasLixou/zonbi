@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use zonbi::{AnyZonbi, Cage, Zonbi, ZonbiId};
+use zonbi::{AnyZonbi, BoxCage, Zonbi, ZonbiId};
 
 #[derive(Debug)]
 struct NonCopyI32(i32);
@@ -17,6 +17,10 @@ unsafe impl<'a> Zonbi for MyStruct<'a> {
     }
 
     unsafe fn zonbify_ref<'z>(&self) -> &Self::Casted<'z> {
+        core::mem::transmute(self)
+    }
+
+    unsafe fn zonbify_mut<'z>(&mut self) -> &mut Self::Casted<'z> {
         core::mem::transmute(self)
     }
 }
@@ -36,9 +40,9 @@ fn main() {
 fn with_zonbi<'a>(a: &'a NonCopyI32) {
     let my_struct = MyStruct { val: a };
 
-    let mut type_map: HashMap<ZonbiId, Cage<'a>> = HashMap::new();
+    let mut type_map: HashMap<ZonbiId, BoxCage<'a>> = HashMap::new();
     let id = ZonbiId::of::<MyStruct>();
-    type_map.insert(id, Cage::new(my_struct));
+    type_map.insert(id, BoxCage::new(my_struct));
 
     let r: &MyStruct<'a> = type_map[&id].downcast_ref::<'_, MyStruct<'a>>().unwrap();
     println!("{:?}", r.val);
