@@ -11,4 +11,4 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-zonbi_macros = { path = "macros" }
+zonbi_macros = { path = "macros", version = "0.1.0" }
