@@ -1,7 +1,11 @@
 [package]
 name = "zonbi_macros"
 version = "0.1.0"
+authors = ["DasLixou"]
 edition = "2021"
+description = "Proc-Macros for `zonbi`"
+repository = "https://github.com/DasLixou/zonbi"
+license = "MIT OR Apache-2.0"
 
 [lib]
 proc-macro = true
