@@ -12,13 +12,20 @@ pub use zonbi_macros::Zonbi;
 pub struct ZonbiId(TypeId);
 
 impl ZonbiId {
-    /// Returns the `ZonbiId` of the given generic type
+    /// Returns the `ZonbiId` of the given generic type.
+    /// 
+    /// This is equal to the [`TypeId`] of the `'static` version of the type.
     pub fn of<Z: Zonbi>() -> ZonbiId {
         ZonbiId(TypeId::of::<Z::Casted<'static>>())
     }
 }
 
+/// A trait to make different-lifetimed versions of a type.
+/// 
+/// It is unsafe to implement because we can't assure that the `Cased<'z>` associated type
+/// is the "same" (ignoring lifetimes) as the implementor.
 pub unsafe trait Zonbi: AnyZonbi {
+    /// A version of this type where all lifetimes are replaced with `'z` so it lives for `'z`.
     type Casted<'z>: Sized + Zonbi + 'z;
 
     unsafe fn zonbify<'z>(self) -> Self::Casted<'z>;
@@ -27,6 +34,7 @@ pub unsafe trait Zonbi: AnyZonbi {
 }
 
 pub trait AnyZonbi {
+    /// Returns the `ZonbiId` of the given generic type.
     fn zonbi_id(&self) -> ZonbiId;
 }
 
