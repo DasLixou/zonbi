@@ -26,14 +26,15 @@ impl From<TypeId> for ZonbiId {
     }
 }
 
-/// A trait to make different-lifetimed versions of a type.
+/// A trait to make a `'life`-lifetimed version of a type.
 ///
-/// It is unsafe to implement because we can't assure that the `Cased<'z>` associated type
+/// It is unsafe to implement because we can't assure that the `Casted` associated type
 /// is the "same" (ignoring lifetimes) as the implementor.
-pub unsafe trait Zonbi<'z>: AnyZonbi<'z> {
-    /// A version of this type where all lifetimes are replaced with `'z` so it lives for `'z`.
-    type Casted: Sized + Zonbi<'z>;
+pub unsafe trait Zonbi<'life>: AnyZonbi<'life> {
+    /// A version of this type where all lifetimes are replaced with `'life` so it lives for `'life`.
+    type Casted: Sized + Zonbi<'life>;
 
+    /// Returns the `ZonbiId` of this type.
     fn zonbi_id() -> ZonbiId;
 
     unsafe fn zonbify(self) -> Self::Casted;
@@ -42,7 +43,10 @@ pub unsafe trait Zonbi<'z>: AnyZonbi<'z> {
 }
 
 pub trait AnyZonbi<'life>: 'life {
-    /// Returns the `ZonbiId` of the given generic type.
+    /// Returns the `ZonbiId` of this erased type.
+    ///
+    /// This needs a shared reference to self in order to be object-safe.
+    /// If you have a concrete type without an instance of it, use [`Zonbi::zonbi_id`] instead.
     fn erased_zonbi_id(&self) -> ZonbiId;
 }
 
@@ -62,7 +66,7 @@ impl<'life> dyn AnyZonbi<'life> {
         ZonbiId::of::<Z>().eq(&self.erased_zonbi_id())
     }
 
-    /// Returns a shared reference to the inner value with a lifetime of `'z`
+    /// Returns a shared reference to the inner value with a lifetime of `'life`
     /// if it represents the zonbi `Z`, or `None` if it doesn't.
     pub fn downcast_ref<Z: Zonbi<'life>>(&self) -> Option<&Z::Casted> {
         if self.represents::<Z>() {
@@ -78,7 +82,7 @@ impl<'life> dyn AnyZonbi<'life> {
         Z::zonbify_ref(raw)
     }
 
-    /// Returns an exclusive reference to the inner value with a lifetime of `'z`
+    /// Returns an exclusive reference to the inner value with a lifetime of `'life`
     /// if it represents the zonbi `Z`, or `None` if it doesn't.
     pub fn downcast_mut<Z: Zonbi<'life>>(&mut self) -> Option<&mut Z::Casted> {
         if self.represents::<Z>() {
