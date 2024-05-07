@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
-use syn::{ConstParam, GenericParam, TypeParam};
+use syn::{ConstParam, GenericParam, Lifetime, LifetimeParam, TypeParam};
 
 #[proc_macro_derive(Zonbi)]
 pub fn derive_zonbi(input: TokenStream) -> TokenStream {
@@ -8,7 +9,8 @@ pub fn derive_zonbi(input: TokenStream) -> TokenStream {
 
     let name = &ast.ident;
     let generics = ast.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let zonbi_life = Lifetime::new("'__zonbi_life", Span::call_site());
 
     let mut zonbi_lifetimes = quote!();
     for ig in &generics.params {
@@ -16,7 +18,7 @@ pub fn derive_zonbi(input: TokenStream) -> TokenStream {
             GenericParam::Lifetime(_) => {
                 zonbi_lifetimes = quote! {
                     #zonbi_lifetimes
-                    '__zonbi_life
+                    #zonbi_life // here we inject the zonbi lifetime
                     ,
                 };
             }
@@ -37,19 +39,36 @@ pub fn derive_zonbi(input: TokenStream) -> TokenStream {
         }
     }
 
+    let mut generics2 = generics.clone();
+    let (_, ty_generics, _) = generics.split_for_impl();
+
+    let life_param = LifetimeParam::new(zonbi_life.clone());
+    generics2.params.push(GenericParam::Lifetime(life_param));
+
+    let (impl_generics, _, where_clause) = generics2.split_for_impl();
+    let other_clauses = where_clause.map(|w| &w.predicates);
+
     quote! {
-        unsafe impl #impl_generics ::zonbi::Zonbi for #name #ty_generics #where_clause {
-            type Casted<'__zonbi_life> = #name<#zonbi_lifetimes>;
+        unsafe impl #impl_generics ::zonbi::Zonbi<#zonbi_life> for #name #ty_generics
+        where
+            Self: #zonbi_life,
+            #other_clauses
+        {
+            type Casted = #name<#zonbi_lifetimes>;
 
-            unsafe fn zonbify<'__zonbi_life>(self) -> Self::Casted<'__zonbi_life> {
+            fn zonbi_id() -> ::zonbi::ZonbiId {
+                ::zonbi::ZonbiId::from(core::any::TypeId::of::<#name<'static>>())
+            }
+
+            unsafe fn zonbify(self) -> Self::Casted {
                 ::core::mem::transmute(self)
             }
 
-            unsafe fn zonbify_ref<'__zonbi_life>(&self) -> &Self::Casted<'__zonbi_life> {
+            unsafe fn zonbify_ref(&self) -> &Self::Casted {
                 ::core::mem::transmute(self)
             }
 
-            unsafe fn zonbify_mut<'__zonbi_life>(&mut self) -> &mut Self::Casted<'__zonbi_life> {
+            unsafe fn zonbify_mut(&mut self) -> &mut Self::Casted {
                 ::core::mem::transmute(self)
             }
         }
