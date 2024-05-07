@@ -64,7 +64,7 @@ impl<'life> dyn AnyZonbi<'life> {
 
     /// Returns a shared reference to the inner value with a lifetime of `'z`
     /// if it represents the zonbi `Z`, or `None` if it doesn't.
-    pub fn downcast_ref<'a, Z: Zonbi<'life> + 'a>(&'a self) -> Option<&Z::Casted> {
+    pub fn downcast_ref<Z: Zonbi<'life>>(&self) -> Option<&Z::Casted> {
         if self.represents::<Z>() {
             Some(unsafe { self.downcast_ref_unchecked::<Z>() })
         } else {
@@ -72,7 +72,7 @@ impl<'life> dyn AnyZonbi<'life> {
         }
     }
 
-    pub unsafe fn downcast_ref_unchecked<'a, Z: Zonbi<'life> + 'a>(&'a self) -> &Z::Casted {
+    pub unsafe fn downcast_ref_unchecked<Z: Zonbi<'life>>(&self) -> &Z::Casted {
         // SAFETY: caller guarantees that Z is the correct type
         let raw = unsafe { &*(self as *const dyn AnyZonbi as *const Z) };
         Z::zonbify_ref(raw)
@@ -80,7 +80,7 @@ impl<'life> dyn AnyZonbi<'life> {
 
     /// Returns an exclusive reference to the inner value with a lifetime of `'z`
     /// if it represents the zonbi `Z`, or `None` if it doesn't.
-    pub fn downcast_mut<'a, Z: Zonbi<'life> + 'a>(&'a mut self) -> Option<&mut Z::Casted> {
+    pub fn downcast_mut<Z: Zonbi<'life>>(&mut self) -> Option<&mut Z::Casted> {
         if self.represents::<Z>() {
             Some(unsafe { self.downcast_mut_unchecked::<Z>() })
         } else {
@@ -88,7 +88,7 @@ impl<'life> dyn AnyZonbi<'life> {
         }
     }
 
-    pub unsafe fn downcast_mut_unchecked<'a, Z: Zonbi<'life> + 'a>(&'a mut self) -> &mut Z::Casted {
+    pub unsafe fn downcast_mut_unchecked<Z: Zonbi<'life>>(&mut self) -> &mut Z::Casted {
         // SAFETY: caller guarantees that Z is the correct type
         let raw = unsafe { &mut *(self as *mut dyn AnyZonbi as *mut Z) };
         Z::zonbify_mut(raw)

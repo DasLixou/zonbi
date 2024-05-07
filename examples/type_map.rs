@@ -21,9 +21,10 @@ fn with_zonbi<'a>(a: &'a NonCopyI32) {
 
     let mut type_map: HashMap<ZonbiId, Box<dyn AnyZonbi<'a>>> = HashMap::new();
     let id = ZonbiId::of::<MyStruct>();
+
     type_map.insert(id, Box::new(my_struct));
 
-    let r: &MyStruct<'a> = type_map[&id].downcast_ref::<'_, MyStruct<'a>>().unwrap();
+    let r: &MyStruct<'a> = type_map[&id].downcast_ref::<MyStruct<'a>>().unwrap();
     println!("{:?}", r.val);
 }
 
