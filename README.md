@@ -5,17 +5,27 @@ This is an experiment to make it possible to type-erase non-`'static` types.
 ## How it works
 
 With `#[derive(Zonbi)]`, the type gets an implementation for getting a version of the type where all lifetimes are replaced with the given one.
-Manual implementation is unsafe because the user must assure that the `Casted<'z>` type is the same as the one of the implementer.
+Manual implementation is unsafe because the user must assure that the `Casted` type is the same as the one of the implementer.
 
 This is used in `ZonbiId`, a wrapper around `TypeId`, which different from it's inside value, has the additional definition of behaviour for non-`'static` types.
-`ZonbiId` is unique for every type, **excluding** its lifetimes. 
+`ZonbiId` is unique for every type, **excluding** its lifetimes.
 Under the hood, it just uses the `Zonbi` trait to get the `'static` version of the type and gets its `TypeId`.
 
-For saving this in a Box, we can use `BoxCage<'life>`. 
-> _I tried to not force the wrapper type, so it's also possible to for example use `Rc` or `Arc`, but I couldn't get it running. Help appreciated :D_
+To hold such type-erased value inside for example a box, you can use the `AnyZonbi<'life>` trait with the associated minimal lifetime.
+Every zonbi that lives for at least `'life` can be upcasted into this trait and downcasted back into it with all the lifetimes being this mininal `'life` one.
 
-The cage has an associated lifetime and can hold any type whose lifetimes are equal or longer than its assocaited one.
-When downcasting the cage back to its type, we get a version of the type back where all the lifetimes are replaced with `'life` of the cage, thus being safe. 
+## Example
+
+```rs
+let mut type_map: HashMap<ZonbiId, Box<dyn AnyZonbi<'a>>> = HashMap::new();
+
+let id = ZonbiId::of::<MyStruct>();
+type_map.insert(id, Box::new(MyStruct { my_reference: &val }));
+
+let r: &MyStruct<'a> = type_map[&id].downcast_ref::<MyStruct<'a>>().unwrap();
+```
+
+_This is broken down example of the [`type_map` example](examples/type_map.rs)._
 
 ## License
 

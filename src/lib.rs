@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use std::any::TypeId;
 
 pub use zonbi_macros::Zonbi;

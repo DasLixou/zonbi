@@ -2,7 +2,7 @@ workspace = { members = ["macros"] }
 
 [package]
 name = "zonbi"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["DasLixou"]
 edition = "2021"
 description = "Type-Erase tools for non-`'static` types"
@@ -11,4 +11,4 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-zonbi_macros = { path = "macros", version = "0.1.0" }
+zonbi_macros = { path = "macros", version = "0.2.0" }
