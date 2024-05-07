@@ -94,29 +94,3 @@ impl<'life> dyn AnyZonbi<'life> {
         Z::zonbify_mut(raw)
     }
 }
-
-/// A wrapper over a `Box`, containing a `dyn AnyZonbi`.
-/// It is marked with a `'life` lifetime, which it's data can't underlive.
-#[repr(transparent)]
-pub struct BoxCage<'life> {
-    c: Box<dyn AnyZonbi<'life> + 'life>,
-}
-
-impl<'life> BoxCage<'life> {
-    /// Creates a new `BoxCage` over a zonbi value which must at least live for `'life`
-    pub fn new<Z: Zonbi<'life> + 'life>(zonbi: Z) -> Self {
-        Self { c: Box::new(zonbi) }
-    }
-
-    /// Returns a shared reference to the inner value with a lifetime of `'life`
-    /// if it represents the zonbi `Z`, or `None` if it doesn't.
-    pub fn downcast_ref<'a, Z: Zonbi<'life> + 'a>(&'a self) -> Option<&Z::Casted> {
-        self.c.downcast_ref::<'a, Z>()
-    }
-
-    /// Returns an exclusive reference to the inner value with a lifetime of `'life`
-    /// if it represents the zonbi `Z`, or `None` if it doesn't.
-    pub fn downcast_mut<'a, Z: Zonbi<'life> + 'a>(&'a mut self) -> Option<&mut Z::Casted> {
-        self.c.downcast_mut::<'a, Z>()
-    }
-}
