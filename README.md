@@ -17,12 +17,26 @@ Every zonbi that lives for at least `'life` can be upcasted into this trait and 
 ## Example
 
 ```rs
-let mut type_map: HashMap<ZonbiId, Box<dyn AnyZonbi<'a>>> = HashMap::new();
+use zonbi::*;
 
-let id = ZonbiId::of::<MyStruct>();
-type_map.insert(id, Cage::new(Box::new(MyStruct { my_reference: &val })));
+#[derive(Zonbi)]
+struct MyStruct<'a> {
+    val: &'a NonCopyI32,
+}
 
-let r: &MyStruct<'a> = type_map[&id].downcast_ref::<MyStruct<'a>>().unwrap();
+type_map(&NonCopyI32(42));
+
+fn type_map<'a>(a: &'a NonCopyI32) {
+    let my_struct = MyStruct { val: a };
+
+    let mut type_map: HashMap<ZonbiId, Box<dyn AnyZonbi<'a>>> = HashMap::new();
+    let id = ZonbiId::of::<MyStruct>();
+
+    type_map.insert(id, Box::new(Cage::new(my_struct)));
+
+    let r: &MyStruct<'a> = type_map[&id].downcast_ref::<MyStruct<'a>>().unwrap();
+    assert_eq!(r.val, &NonCopyI32(42));
+}
 ```
 
 _This is a broken down snippet of the [`type_map` example](examples/type_map.rs)._

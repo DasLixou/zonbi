@@ -2,7 +2,7 @@ workspace = { members = ["macros"] }
 
 [package]
 name = "zonbi"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["DasLixou"]
 edition = "2021"
 description = "Type-Erase tools for non-`'static` types"

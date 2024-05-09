@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use zonbi::{AnyZonbi, Cage, Zonbi, ZonbiId};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct NonCopyI32(i32);
 
 #[derive(Zonbi)]
@@ -25,6 +25,7 @@ fn with_zonbi<'a>(a: &'a NonCopyI32) {
     type_map.insert(id, Box::new(Cage::new(my_struct)));
 
     let r: &MyStruct<'a> = type_map[&id].downcast_ref::<MyStruct<'a>>().unwrap();
+    assert_eq!(r.val, &NonCopyI32(42));
     println!("{:?}", r.val);
 }
 

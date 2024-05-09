@@ -16,13 +16,33 @@
 //!
 //! ## Example
 //!
-//! ```ignore
-//! let mut type_map: HashMap<ZonbiId, Box<dyn AnyZonbi<'a>>> = HashMap::new();
+//! ```
+//! # #[derive(Debug, PartialEq)]
+//! # struct NonCopyI32(i32);
+//! #
+//! # use std::collections::HashMap;
+//! use zonbi::*;
 //!
-//! let id = ZonbiId::of::<MyStruct>();
-//! type_map.insert(id, Cage::new(Box::new(MyStruct { my_reference: &val })));
+//! #[derive(Zonbi)]
+//! struct MyStruct<'a> {
+//!     val: &'a NonCopyI32,
+//! }
 //!
-//! let r: &MyStruct<'a> = type_map[&id].downcast_ref::<MyStruct<'a>>().unwrap();
+//! # fn main() {
+//! type_map(&NonCopyI32(42));
+//! # }
+//!
+//! fn type_map<'a>(a: &'a NonCopyI32) {
+//!     let my_struct = MyStruct { val: a };
+//!
+//!     let mut type_map: HashMap<ZonbiId, Box<dyn AnyZonbi<'a>>> = HashMap::new();
+//!     let id = ZonbiId::of::<MyStruct>();
+//!
+//!     type_map.insert(id, Box::new(Cage::new(my_struct)));
+//!
+//!     let r: &MyStruct<'a> = type_map[&id].downcast_ref::<MyStruct<'a>>().unwrap();
+//!     assert_eq!(r.val, &NonCopyI32(42));
+//! }
 //! ```
 //!
 //! _This is a broken down snippet of the [`type_map` example](https://github.com/DasLixou/zonbi/blob/master/examples/type_map.rs)._
