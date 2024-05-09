@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 
-use std::any::TypeId;
+use std::{any::TypeId, marker::PhantomData};
 
 pub use zonbi_macros::Zonbi;
 
@@ -32,7 +32,7 @@ impl From<TypeId> for ZonbiId {
 ///
 /// It is unsafe to implement because we can't assure that the `Casted` associated type
 /// is the "same" (ignoring lifetimes) as the implementor.
-pub unsafe trait Zonbi<'life>: AnyZonbi<'life> {
+pub unsafe trait Zonbi<'life>: 'life {
     /// A version of this type where all lifetimes are replaced with `'life` so it lives for `'life`.
     type Casted: Sized + Zonbi<'life>;
 
@@ -44,28 +44,26 @@ pub unsafe trait Zonbi<'life>: AnyZonbi<'life> {
     unsafe fn zonbify_mut(&mut self) -> &mut Self::Casted;
 }
 
-pub trait AnyZonbi<'life>: 'life {
+mod private {
+    pub trait Sealed {}
+}
+
+pub trait AnyZonbi<'life>: private::Sealed + 'life {
     /// Returns the `ZonbiId` of this erased type.
     ///
     /// This needs a shared reference to self in order to be object-safe.
     /// If you have a concrete type without an instance of it, use [`Zonbi::zonbi_id`] instead.
-    fn erased_zonbi_id(&self) -> ZonbiId;
-}
+    fn zonbi_id(&self) -> ZonbiId;
 
-impl<'life, Z> AnyZonbi<'life> for Z
-where
-    Z: Zonbi<'life>,
-{
-    fn erased_zonbi_id(&self) -> ZonbiId {
-        Z::zonbi_id()
-    }
+    unsafe fn get_raw(&self) -> *const ();
+    unsafe fn get_raw_mut(&mut self) -> *mut ();
 }
 
 impl<'life> dyn AnyZonbi<'life> {
     /// Returns `true` if the inner type represents the same as `T`,
     /// **excluding** its lifetimes.
     pub fn represents<Z: Zonbi<'life>>(&self) -> bool {
-        ZonbiId::of::<Z>().eq(&self.erased_zonbi_id())
+        ZonbiId::of::<Z>().eq(&self.zonbi_id())
     }
 
     /// Returns a shared reference to the inner value with a lifetime of `'life`
@@ -80,7 +78,7 @@ impl<'life> dyn AnyZonbi<'life> {
 
     pub unsafe fn downcast_ref_unchecked<Z: Zonbi<'life>>(&self) -> &Z::Casted {
         // SAFETY: caller guarantees that Z is the correct type
-        let raw = unsafe { &*(self as *const dyn AnyZonbi as *const Z) };
+        let raw = unsafe { &*self.get_raw().cast::<Z>() };
         Z::zonbify_ref(raw)
     }
 
@@ -96,7 +94,41 @@ impl<'life> dyn AnyZonbi<'life> {
 
     pub unsafe fn downcast_mut_unchecked<Z: Zonbi<'life>>(&mut self) -> &mut Z::Casted {
         // SAFETY: caller guarantees that Z is the correct type
-        let raw = unsafe { &mut *(self as *mut dyn AnyZonbi as *mut Z) };
+        let raw = unsafe { &mut *self.get_raw_mut().cast::<Z>() };
         Z::zonbify_mut(raw)
+    }
+}
+
+pub struct Cage<'life, Z: Zonbi<'life>> {
+    val: Z,
+    phantom: PhantomData<&'life ()>,
+}
+
+impl<'life, Z: Zonbi<'life>> Cage<'life, Z> {
+    pub fn new(val: Z) -> Self {
+        Self {
+            val,
+            phantom: PhantomData,
+        }
+    }
+
+    pub fn into_inner(self) -> Z::Casted {
+        unsafe { Z::zonbify(self.val) }
+    }
+}
+
+impl<'life, Z: Zonbi<'life>> private::Sealed for Cage<'life, Z> {}
+
+impl<'life, Z: Zonbi<'life>> AnyZonbi<'life> for Cage<'life, Z> {
+    fn zonbi_id(&self) -> ZonbiId {
+        Z::zonbi_id()
+    }
+
+    unsafe fn get_raw(&self) -> *const () {
+        (&self.val as *const Z).cast()
+    }
+
+    unsafe fn get_raw_mut(&mut self) -> *mut () {
+        (&mut self.val as *mut Z).cast()
     }
 }
