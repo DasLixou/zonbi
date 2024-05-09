@@ -39,14 +39,14 @@ checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 
 [[package]]
 name = "zonbi"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "zonbi_macros",
 ]
 
 [[package]]
 name = "zonbi_macros"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "proc-macro2",
  "quote",
